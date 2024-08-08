@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from .schemas import UserCreate, UserResponse, Token
-from .auth import authenticate_user, create_access_token, get_password_hash, get_current_user
-from .database import users_collection
+from fastapi import FastAPI, Depends, HTTPException, status, Header
+from schemas import UserCreate, UserResponse, Token, NoteResponse, NoteCreate
+from auth import authenticate_user, create_access_token, get_password_hash, verify_jwt
+from database import users_collection, settings, notes_collection
 from datetime import timedelta
+import uvicorn
 
 app = FastAPI()
 
@@ -31,10 +32,21 @@ async def login_for_access_token(user: UserCreate):
         )
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": user["email"]}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/users/me", response_model=UserResponse)
-async def read_users_me(current_user: UserResponse = Depends(get_current_user)):
-    return current_user
+@app.post("/add-note")
+async def add_note(note:NoteCreate,token:str=Header(..., description="JWT Token for authorization")):
+    email = verify_jwt(token)
+    note_dict = {
+        "owner_id": email,
+        "title": note.title,
+        "content": note.content
+    }
+    new_note = await notes_collection.insert_one(note_dict)
+    created_note = await notes_collection.find_one({"_id":new_note.inserted_id})
+    return NoteResponse(id=str(created_note["_id"]),title=created_note["title"],content=created_note["content"])
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
