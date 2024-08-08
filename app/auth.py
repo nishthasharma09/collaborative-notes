@@ -40,7 +40,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 def verify_jwt(token: str):
     credential_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate jwt token",
+        detail="Could not validate jwt token, please login again",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
