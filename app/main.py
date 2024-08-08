@@ -6,8 +6,21 @@ from datetime import timedelta
 import uvicorn
 from bson import ObjectId
 from typing import List
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Allows access from these origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Allows all HTTP headers
+)
 
 @app.post("/register", response_model=UserResponse)
 async def register(user: UserCreate):
