@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Header
-from schemas import UserCreate, UserResponse, Token, NoteResponse, NoteCreate, NoteOwnerUpdateResponse
+from schemas import UserCreate, UserResponse, Token, NoteResponse, NoteCreate, NoteOwnerUpdateResponse, UserListResponse
 from auth import authenticate_user, create_access_token, get_password_hash, verify_jwt
 from database import users_collection, settings, notes_collection
 from datetime import timedelta
@@ -50,6 +50,11 @@ async def login_for_access_token(user: UserCreate):
         data={"sub": user["email"]}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/get-users")
+async def get_users():
+    users = await users_collection.find().to_list(length=100)
+    return UserListResponse(userList=[i["email"] for i in users])
 
 @app.post("/add-note")
 async def add_note(note:NoteCreate,token:str=Header(..., description="JWT Token for authorization")):

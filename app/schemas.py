@@ -8,6 +8,9 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     email: EmailStr
 
+class UserListResponse(BaseModel):
+    userList: list
+
 class Token(BaseModel):
     access_token: str
     token_type: str
