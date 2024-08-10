@@ -56,7 +56,7 @@ async def add_note(note:NoteCreate,token:str=Header(..., description="JWT Token 
     email = verify_jwt(token)
 
     note_dict = {
-        "owner_id": email,
+        "owner_id": [email],
         "title": note.title,
         "content": note.content
     }
@@ -70,7 +70,7 @@ async def get_note_by_id(noteId:str,token:str=Header(..., description="JWT Token
     note = await notes_collection.find_one({"_id":ObjectId(noteId)})
     if note is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-    if note["owner_id"] != email:
+    if email not in note["owner_id"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user is not authorised to view this note")
     
     return NoteResponse(id=str(note["_id"]), title=note["title"], content=note["content"])
@@ -78,7 +78,7 @@ async def get_note_by_id(noteId:str,token:str=Header(..., description="JWT Token
 @app.get("/get-notes/", response_model=List[NoteResponse])
 async def get_all_notes(token:str=Header(..., description="JWT Token for authorization")):
     email = verify_jwt(token)
-    notes = await notes_collection.find({"owner_id":email}).to_list(length=100)
+    notes = [note for note in await notes_collection.find().to_list(length=100) if email in note["owner_id"]]
     if notes is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No Notes found for this owner")
     
@@ -91,7 +91,7 @@ async def update_note(note:NoteCreate, noteId:str,token:str=Header(..., descript
     note_to_be_updated = await notes_collection.find_one({"_id":ObjectId(noteId)})
     if note_to_be_updated is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-    if note_to_be_updated["owner_id"] != email:
+    if email not in note_to_be_updated["owner_id"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user is not authorised to update this note")
     
     await notes_collection.update_one(
@@ -100,7 +100,7 @@ async def update_note(note:NoteCreate, noteId:str,token:str=Header(..., descript
     )
 
     updated_note = await notes_collection.find_one({"_id":ObjectId(noteId)})
-    return NoteResponse(id=str(updated_note["_id"]), title=updated_note["title"], content=updated_note["content"])
+    return NoteResponse(id=str(updated_note["_id"]), title=updated_note["title"], content=updated_note["content"], updatedBy=email)
 
 @app.delete("/delete-note/{noteId}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_note(noteId:str,token:str=Header(..., description="JWT Token for authorization")):
@@ -108,7 +108,7 @@ async def delete_note(noteId:str,token:str=Header(..., description="JWT Token fo
     note_to_be_deleted = await notes_collection.find_one({"_id":ObjectId(noteId)})
     if note_to_be_deleted is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-    if note_to_be_deleted["owner_id"] != email:
+    if email not in note_to_be_deleted["owner_id"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user is not authorised to delete this note")
     await notes_collection.delete_one(
         {"_id":ObjectId(noteId)}

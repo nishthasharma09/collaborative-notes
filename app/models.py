@@ -29,7 +29,7 @@ class UserModel(BaseModel):
 
 class NoteModel(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    owner_id: str
+    owner_id: list
     content: str
     title: str
 

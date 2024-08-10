@@ -23,3 +23,4 @@ class NoteResponse(BaseModel):
     id: str
     title: str
     content: str
+    updatedBy: str = None
