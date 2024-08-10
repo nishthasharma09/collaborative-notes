@@ -24,3 +24,9 @@ class NoteResponse(BaseModel):
     title: str
     content: str
     updatedBy: str = None
+
+class NoteOwnerUpdateResponse(BaseModel):
+    id: str
+    title: str
+    content: str
+    owners: list

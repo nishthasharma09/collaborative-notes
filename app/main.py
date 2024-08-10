@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Header
-from schemas import UserCreate, UserResponse, Token, NoteResponse, NoteCreate
+from schemas import UserCreate, UserResponse, Token, NoteResponse, NoteCreate, NoteOwnerUpdateResponse
 from auth import authenticate_user, create_access_token, get_password_hash, verify_jwt
 from database import users_collection, settings, notes_collection
 from datetime import timedelta
@@ -114,6 +114,26 @@ async def delete_note(noteId:str,token:str=Header(..., description="JWT Token fo
         {"_id":ObjectId(noteId)}
     )
     return
+
+@app.put("/add-owner/{noteId}", response_model=NoteOwnerUpdateResponse)
+async def add_owner(ownerId:str, noteId: str, token:str=Header(..., description="JWT Token for authorization")):
+    email = verify_jwt(token)
+    note_to_be_updated = await notes_collection.find_one({"_id":ObjectId(noteId)})
+    owner_to_be_added = await users_collection.find_one({"email":ownerId})
+    if note_to_be_updated is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+    if email not in note_to_be_updated["owner_id"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user is not authorised to update this note")
+    if owner_to_be_added is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Owner to be added is not registered with us.")
+    note_to_be_updated["owner_id"].append(ownerId)
+    await notes_collection.update_one(
+        {"_id": ObjectId(noteId)},
+        {"$set": {"owner_id": note_to_be_updated["owner_id"]}}
+    )
+
+    updated_note = await notes_collection.find_one({"_id":ObjectId(noteId)})
+    return NoteOwnerUpdateResponse(id=str(updated_note["_id"]), title=updated_note["title"], content=updated_note["content"], owners=updated_note["owner_id"])
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
