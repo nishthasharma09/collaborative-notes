@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Box, Button, TextField, Typography, Paper } from "@mui/material";
 import axios from "axios";
+import { Link } from "react-router-dom";
 
 function LoginPage() {
   const [username, setUsername] = useState("");
@@ -12,7 +13,10 @@ function LoginPage() {
     setError(null);
 
     try {
-      const response = await axios.post("/token", { username, password });
+      const response = await axios.post("http://localhost:8000/token", {
+        username,
+        password,
+      });
       console.log("Login successful:", response.data);
     } catch (error) {
       setError("Invalid username or password");
@@ -72,6 +76,9 @@ function LoginPage() {
         >
           Sign In
         </Button>
+        <Typography>
+          Don't have an account ? <Link to="/register">Sign up</Link>
+        </Typography>
       </Paper>
     </Box>
   );

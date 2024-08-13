@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import Header from "./layout/Header";
 import Footer from "./layout/Footer";
-
 import { ThemeProvider } from "@mui/material/styles";
-
 import { createTheme } from "@mui/material/styles";
 import Home from "./home/Home";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import LoginPage from "./auth/Login";
+import RegistrationPage from "./auth/Register";
 
 const keepNotesTheme = createTheme({
   palette: {
@@ -99,28 +100,23 @@ const keepNotesTheme = createTheme({
   },
 });
 
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <LoginPage />,
+  },
+  {
+    path: "/register",
+    element: <RegistrationPage />,
+  },
+]);
+
 function App() {
-  const [notes, setNotes] = useState([]);
-
-  function addNote(newNote) {
-    setNotes((prevNotes) => {
-      return [...prevNotes, newNote];
-    });
-  }
-
-  function deleteNote(id) {
-    setNotes((prevNotes) => {
-      return prevNotes.filter((noteItem, index) => {
-        return index !== id;
-      });
-    });
-  }
-
   return (
     <ThemeProvider theme={keepNotesTheme}>
       <div>
         <Header />
-        <Home />
+        <RouterProvider router={router} />
         <Footer />
       </div>
     </ThemeProvider>

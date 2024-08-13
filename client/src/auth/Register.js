@@ -3,7 +3,7 @@ import { Box, Button, TextField, Typography, Paper } from "@mui/material";
 import axios from "axios";
 
 function RegistrationPage() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState(null);
@@ -18,7 +18,10 @@ function RegistrationPage() {
     }
 
     try {
-      const response = await axios.post("/register", { username, password });
+      const response = await axios.post("http://localhost:8000/register", {
+        email,
+        password,
+      });
       // Handle successful registration, e.g., redirect to login
       console.log("Registration successful:", response.data);
     } catch (error) {
@@ -57,8 +60,8 @@ function RegistrationPage() {
           required
           fullWidth
           label="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
         <TextField
           margin="normal"
