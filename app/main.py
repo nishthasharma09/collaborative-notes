@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Header, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Depends, HTTPException, status, Header
 from schemas import UserCreate, UserResponse, Token, NoteResponse, NoteCreate, NoteOwnerUpdateResponse, UserListResponse
 from auth import authenticate_user, create_access_token, get_password_hash, verify_jwt
 from database import users_collection, settings, notes_collection
 from datetime import timedelta
 import uvicorn
 from bson import ObjectId
-from typing import List, Dict
+from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -21,27 +21,6 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all HTTP methods (GET, POST, PUT, DELETE, etc.)
     allow_headers=["*"],  # Allows all HTTP headers
 )
-
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: Dict[str, List[WebSocket]] = {}
-
-    async def connect(self, note_id: str, websocket: WebSocket):
-        await websocket.accept()
-        if note_id not in self.active_connections:
-            self.active_connections[note_id] = []
-        self.active_connections[note_id].append(websocket)
-
-    def disconnect(self, note_id: str, websocket: WebSocket):
-        self.active_connections[note_id].remove(websocket)
-        if not self.active_connections[note_id]:
-            del self.active_connections[note_id]
-
-    async def broadcast(self, note_id: str, message: str):
-        for connection in self.active_connections.get(note_id, []):
-            await connection.send_text(message)
-
-manager = ConnectionManager()
 
 @app.post("/register", response_model=UserResponse)
 async def register(user: UserCreate):
@@ -110,25 +89,6 @@ async def get_all_notes(token:str=Header(..., description="JWT Token for authori
     
     return [NoteResponse(id=str(note["_id"]), title=note["title"], content=note["content"]) for note in notes]
 
-@app.websocket("/ws/notes/{note_id}")
-async def websocket_endpoint(websocket: WebSocket, noteId: str, token:str=Header(..., description="JWT Token for authorization")):
-    email = verify_jwt(token)
-    await manager.connect(noteId, websocket)
-    try:
-        while True:
-            note_to_be_updated = await notes_collection.find_one({"_id":ObjectId(noteId)})
-            if note_to_be_updated is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-            if email not in note_to_be_updated["owner_id"]:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user is not authorised to update this note")
-            data = await websocket.receive_text()
-            await notes_collection.update_one(
-                {"_id": ObjectId(noteId)},
-                {"$set": {"title":data.title, "content":data.content}}
-            )
-            await manager.broadcast(noteId, data)
-    except WebSocketDisconnect:
-        manager.disconnect(noteId, websocket)
 
 @app.put("/update-note/{noteId}", response_model=NoteResponse)
 async def update_note(note:NoteCreate, noteId:str,token:str=Header(..., description="JWT Token for authorization")):
@@ -145,7 +105,6 @@ async def update_note(note:NoteCreate, noteId:str,token:str=Header(..., descript
     )
 
     updated_note = await notes_collection.find_one({"_id":ObjectId(noteId)})
-    await manager.broadcast(noteId, update_note["content"])
     return NoteResponse(id=str(updated_note["_id"]), title=updated_note["title"], content=updated_note["content"], updatedBy=email)
 
 @app.delete("/delete-note/{noteId}", status_code=status.HTTP_204_NO_CONTENT)
