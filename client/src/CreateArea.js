@@ -32,16 +32,15 @@ function CreateArea(props) {
 
   return (
     <Box component="form" className="create-note" onSubmit={submitNote}>
-      {isExpanded && (
-        <TextField
-          name="title"
-          onChange={handleChange}
-          value={note.title}
-          label="Title"
-          fullWidth
-          margin="normal"
-        />
-      )}
+      <TextField
+        name="title"
+        onChange={handleChange}
+        value={note.title}
+        label="Title"
+        fullWidth
+        margin="normal"
+      />
+
       <TextField
         name="content"
         onClick={expand}

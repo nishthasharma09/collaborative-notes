@@ -109,6 +109,10 @@ const router = createBrowserRouter([
     path: "/register",
     element: <RegistrationPage />,
   },
+  {
+    path: "/notes",
+    element: <Home />,
+  },
 ]);
 
 function App() {

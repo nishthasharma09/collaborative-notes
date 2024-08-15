@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { Box, Button, TextField, Typography, Paper } from "@mui/material";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 function LoginPage() {
-  const [username, setUsername] = useState("");
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
 
@@ -14,9 +16,12 @@ function LoginPage() {
 
     try {
       const response = await axios.post("http://localhost:8000/token", {
-        username,
+        email,
         password,
       });
+      const { access_token } = response.data;
+      localStorage.setItem("access_token", access_token);
+      navigate("/notes");
       console.log("Login successful:", response.data);
     } catch (error) {
       setError("Invalid username or password");
@@ -54,8 +59,8 @@ function LoginPage() {
           required
           fullWidth
           label="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
         <TextField
           margin="normal"
