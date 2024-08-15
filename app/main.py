@@ -110,7 +110,7 @@ async def get_all_notes(token:str=Header(..., description="JWT Token for authori
     
     return [NoteResponse(id=str(note["_id"]), title=note["title"], content=note["content"]) for note in notes]
 
-@app.websocket("/ws/notes/{note_id}")
+@app.websocket("/ws/notes/{noteId}")
 async def websocket_endpoint(websocket: WebSocket, noteId: str, token:str=Header(..., description="JWT Token for authorization")):
     email = verify_jwt(token)
     await manager.connect(noteId, websocket)
@@ -121,12 +121,22 @@ async def websocket_endpoint(websocket: WebSocket, noteId: str, token:str=Header
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
             if email not in note_to_be_updated["owner_id"]:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user is not authorised to update this note")
-            data = await websocket.receive_text()
-            await notes_collection.update_one(
-                {"_id": ObjectId(noteId)},
-                {"$set": {"title":data.title, "content":data.content}}
-            )
-            await manager.broadcast(noteId, data)
+            data = await websocket.receive_json()
+
+            if data['type'] == 'content':
+                await notes_collection.update_one(
+                    {"_id": ObjectId(noteId)},
+                    {"$set": {"title":data.title, "content":data.content}}
+                )
+                await manager.broadcast(noteId, data)
+            elif data['type'] == 'cursor':
+                cursor_data = {
+                    "type": "cursor",
+                    "user_id": data["user_id"],
+                    "cursor_position": data["cursor_position"]
+                }
+                await manager.broadcast(noteId, cursor_data)
+
     except WebSocketDisconnect:
         manager.disconnect(noteId, websocket)
 
