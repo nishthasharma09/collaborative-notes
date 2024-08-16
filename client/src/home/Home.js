@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Note from "../Note";
 import CreateArea from "../CreateArea";
 import NoteDialog from "../NoteDialog";
+import WebSocketClient from "../WebSocketClient";
 
 function Home() {
   const [notes, setNotes] = useState([]);
   const [refreshNotes, setRefreshNotes] = useState(false);
   const [selectedNote, setSelectedNote] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const wsClient = useRef(null);
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -31,15 +33,11 @@ function Home() {
   const addNote = async (newNote) => {
     try {
       const token = localStorage.getItem("access_token");
-      const response = await axios.post(
-        "http://localhost:8000/add-note",
-        newNote,
-        {
-          headers: {
-            Token: `${token}`,
-          },
-        }
-      );
+      await axios.post("http://localhost:8000/add-note", newNote, {
+        headers: {
+          Token: `${token}`,
+        },
+      });
       setRefreshNotes(!refreshNotes);
     } catch (error) {
       console.log("Failed to add note", error);
@@ -61,17 +59,24 @@ function Home() {
   const openDialog = (note) => {
     setSelectedNote(note);
     setIsDialogOpen(true);
+    // Initialize WebSocket connection when opening a note
+    wsClient.current = new WebSocketClient(note.id);
   };
 
   const closeDialog = () => {
     setIsDialogOpen(false);
     setSelectedNote(null);
+    // Close WebSocket connection when closing the note dialog
+    if (wsClient.current) {
+      wsClient.current.close();
+      wsClient.current = null;
+    }
   };
 
   const saveNote = async (updatedNote) => {
     try {
       const token = localStorage.getItem("access_token");
-      const response = await axios.put(
+      await axios.put(
         `http://localhost:8000/update-note/${updatedNote.id}`,
         updatedNote,
         {
@@ -126,6 +131,7 @@ function Home() {
         note={selectedNote}
         onSave={saveNote}
         onShare={shareNote}
+        wsClient={wsClient.current}
       />
     </div>
   );
