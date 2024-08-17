@@ -76,14 +76,20 @@ function LoginPage() {
         <Button
           type="submit"
           variant="contained"
-          color="secondary"
           fullWidth
           sx={{ mt: 3, mb: 2 }}
+          style={{ color: "white" }}
         >
           Sign In
         </Button>
         <Typography>
-          Don't have an account ? <Link to="/register">Sign up</Link>
+          Don't have an account ?{" "}
+          <Link
+            to="/register"
+            style={{ textDecoration: "none", color: "blue" }}
+          >
+            Sign up
+          </Link>
         </Typography>
       </Paper>
     </Box>

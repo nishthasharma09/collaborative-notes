@@ -100,7 +100,14 @@ function NoteDialog({ open, onClose, note, onSave, onShare, wsClient }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <Button startIcon={<ShareIcon />} onClick={handleShare} color="primary">
+        <br />
+        <br />
+        <Button
+          startIcon={<ShareIcon />}
+          onClick={handleShare}
+          color="primary"
+          variant="outlined"
+        >
           Share
         </Button>
       </DialogContent>
@@ -108,9 +115,9 @@ function NoteDialog({ open, onClose, note, onSave, onShare, wsClient }) {
         <Button onClick={onClose} color="secondary">
           Cancel
         </Button>
-        <Button onClick={handleSave} color="primary">
+        {/* <Button onClick={handleSave} color="primary">
           Save
-        </Button>
+        </Button> */}
       </DialogActions>
     </Dialog>
   );
