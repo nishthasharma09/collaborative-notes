@@ -13,6 +13,7 @@ function NoteDialog({ open, onClose, note, onSave, onShare, wsClient }) {
   const [title, setTitle] = useState(note?.title || "");
   const [content, setContent] = useState(note?.content || "");
   const [email, setEmail] = useState("");
+  const wasOpen = useRef(false); // Tracks the previous open state
 
   useEffect(() => {
     if (note) {
@@ -31,6 +32,14 @@ function NoteDialog({ open, onClose, note, onSave, onShare, wsClient }) {
       });
     }
   }, [wsClient]);
+
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      // Page refresh when the dialog was open and is now closed
+      window.location.reload();
+    }
+    wasOpen.current = open; // Update the ref to the current open state
+  }, [open]);
 
   const handleSave = () => {
     onSave({ ...note, title, content });
