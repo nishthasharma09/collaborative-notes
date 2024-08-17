@@ -62,11 +62,7 @@ function Home() {
     setIsDialogOpen(true);
     // Initialize WebSocket connection when opening a note
     const userId = localStorage.getItem("email");
-    wsClient.current = new WebSocketClient(
-      note.id,
-      localStorage.getItem("access_token"),
-      userId
-    );
+    wsClient.current = new WebSocketClient(note.id, token);
 
     // Handle incoming messages
     wsClient.current.onMessage((data) => {
@@ -92,15 +88,14 @@ function Home() {
 
   const saveNote = async (updatedNote) => {
     try {
-      const userId = localStorage.getItem("user_id"); // Assuming user_id is stored in localStorage
-      wsClient.current.send(
-        {
-          type: "content",
-          title: updatedNote.title,
-          content: updatedNote.content,
-        },
-        userId
-      );
+      const userId = localStorage.getItem("email");
+      wsClient.current.send({
+        type: "content",
+        title: updatedNote.title,
+        content: updatedNote.content,
+        user_id: userId,
+        token: localStorage.getItem("access_token"),
+      });
 
       // Additionally, you can perform an HTTP PUT request if needed
       const token = localStorage.getItem("access_token");
@@ -129,7 +124,7 @@ function Home() {
         {},
         {
           headers: {
-            token: `${token}`,
+            Token: `${token}`,
           },
         }
       );

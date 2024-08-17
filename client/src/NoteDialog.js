@@ -8,14 +8,11 @@ import {
   Button,
 } from "@mui/material";
 import ShareIcon from "@mui/icons-material/Share";
-import Avatar from "@mui/material/Avatar";
 
 function NoteDialog({ open, onClose, note, onSave, onShare, wsClient }) {
   const [title, setTitle] = useState(note?.title || "");
   const [content, setContent] = useState(note?.content || "");
   const [email, setEmail] = useState("");
-  const [cursors, setCursors] = useState({});
-  const contentRef = useRef(null);
 
   useEffect(() => {
     if (note) {
@@ -27,11 +24,9 @@ function NoteDialog({ open, onClose, note, onSave, onShare, wsClient }) {
   useEffect(() => {
     if (wsClient) {
       wsClient.onMessage((data) => {
-        if (data.type === "cursor") {
-          setCursors((prevCursors) => ({
-            ...prevCursors,
-            [data.user_id]: data,
-          }));
+        if (data.type === "content") {
+          setTitle(data.title);
+          setContent(data.content);
         }
       });
     }
@@ -47,17 +42,19 @@ function NoteDialog({ open, onClose, note, onSave, onShare, wsClient }) {
     setEmail("");
   };
 
-  const handleCursorMove = (e) => {
-    const token = localStorage.getItem("access_token");
-    const userEmail = token ? JSON.parse(atob(token.split(".")[1])).sub : null;
+  const handleContentChange = (e) => {
+    const newContent = e.target.value;
+    setContent(newContent);
 
-    if (wsClient && userEmail) {
-      const cursorData = {
-        type: "cursor",
-        user_id: userEmail,
-        cursor_position: contentRef.current.selectionStart,
+    if (wsClient) {
+      const updatedNote = {
+        type: "content",
+        title: title,
+        content: newContent,
+        user_id: localStorage.getItem("email"),
+        token: localStorage.getItem("access_token"),
       };
-      wsClient.send(cursorData);
+      wsClient.send(updatedNote);
     }
   };
 
@@ -83,9 +80,7 @@ function NoteDialog({ open, onClose, note, onSave, onShare, wsClient }) {
           rows={4}
           variant="outlined"
           value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyUp={handleCursorMove}
-          inputRef={contentRef}
+          onChange={handleContentChange}
         />
         <TextField
           margin="dense"
@@ -99,22 +94,6 @@ function NoteDialog({ open, onClose, note, onSave, onShare, wsClient }) {
         <Button startIcon={<ShareIcon />} onClick={handleShare} color="primary">
           Share
         </Button>
-        <div>
-          {Object.entries(cursors).map(([user_id, cursor]) => (
-            <div key={user_id} style={{ position: "relative" }}>
-              <Avatar
-                style={{
-                  position: "absolute",
-                  left: cursor.cursor_position,
-                  top: -10,
-                  transform: "translate(-50%, -50%)",
-                }}
-              >
-                {user_id[0].toUpperCase()}
-              </Avatar>
-            </div>
-          ))}
-        </div>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} color="secondary">

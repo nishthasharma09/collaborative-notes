@@ -17,14 +17,9 @@ class WebSocketClient {
     };
   }
 
-  send(data, userId) {
-    const message = {
-      ...data,
-      user_id: localStorage.getItem("email"),
-      token: this.token,
-    };
-    console.log(message);
-    this.socket.send(JSON.stringify(message));
+  send(data) {
+    console.log(data);
+    this.socket.send(JSON.stringify(data));
   }
 
   onMessage(callback) {
