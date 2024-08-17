@@ -2,7 +2,11 @@ class WebSocketClient {
   constructor(noteId, token) {
     this.noteId = noteId;
     this.token = token;
-    this.socket = new WebSocket(`ws://localhost:8000/ws/notes/${noteId}`);
+    this.socket = new WebSocket(`ws://localhost:8000/ws/notes/${noteId}`, [], {
+      headers: {
+        "token": `${token}`
+    }
+    });
     this.socket.onopen = () => {
       console.log("WebSocket connection opened.");
       this.socket.send(
