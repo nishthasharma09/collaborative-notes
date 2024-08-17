@@ -57,10 +57,27 @@ function Home() {
   };
 
   const openDialog = (note) => {
+    const token = localStorage.getItem("access_token");
     setSelectedNote(note);
     setIsDialogOpen(true);
     // Initialize WebSocket connection when opening a note
-    wsClient.current = new WebSocketClient(note.id);
+    const userId = localStorage.getItem("email");
+    wsClient.current = new WebSocketClient(
+      note.id,
+      localStorage.getItem("access_token"),
+      userId
+    );
+
+    // Handle incoming messages
+    wsClient.current.onMessage((data) => {
+      if (data.type === "content" && data.noteId === note.id) {
+        setSelectedNote((prevNote) => ({
+          ...prevNote,
+          title: data.title,
+          content: data.content,
+        }));
+      }
+    });
   };
 
   const closeDialog = () => {
@@ -75,6 +92,17 @@ function Home() {
 
   const saveNote = async (updatedNote) => {
     try {
+      const userId = localStorage.getItem("user_id"); // Assuming user_id is stored in localStorage
+      wsClient.current.send(
+        {
+          type: "content",
+          title: updatedNote.title,
+          content: updatedNote.content,
+        },
+        userId
+      );
+
+      // Additionally, you can perform an HTTP PUT request if needed
       const token = localStorage.getItem("access_token");
       await axios.put(
         `http://localhost:8000/update-note/${updatedNote.id}`,

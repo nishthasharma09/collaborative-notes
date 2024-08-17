@@ -21,6 +21,7 @@ function LoginPage() {
       });
       const { access_token } = response.data;
       localStorage.setItem("access_token", access_token);
+      localStorage.setItem("email", email);
       navigate("/notes");
       console.log("Login successful:", response.data);
     } catch (error) {

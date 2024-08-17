@@ -8,6 +8,12 @@ from bson import ObjectId
 from typing import List, Dict
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from typing import List
+from pydantic import BaseModel
+from jose import jwt, JWTError
+
 app = FastAPI()
 
 origins = [
@@ -37,9 +43,9 @@ class ConnectionManager:
         if not self.active_connections[note_id]:
             del self.active_connections[note_id]
 
-    async def broadcast(self, note_id: str, message: str):
+    async def broadcast(self, note_id: str, message: dict):
         for connection in self.active_connections.get(note_id, []):
-            await connection.send_text(message)
+            await connection.send_json(message)
 
 manager = ConnectionManager()
 
@@ -110,35 +116,67 @@ async def get_all_notes(token:str=Header(..., description="JWT Token for authori
     
     return [NoteResponse(id=str(note["_id"]), title=note["title"], content=note["content"]) for note in notes]
 
-@app.websocket("/ws/notes/{noteId}")
-async def websocket_endpoint(websocket: WebSocket, noteId: str, token:str=Header(..., description="JWT Token for authorization")):
-    email = verify_jwt(token)
-    await manager.connect(noteId, websocket)
+
+@app.websocket("/ws/notes/{note_id}")
+async def websocket_endpoint(websocket: WebSocket, note_id: str):
+    # Accept the WebSocket connection
+    await manager.connect(note_id, websocket)
+
     try:
         while True:
-            note_to_be_updated = await notes_collection.find_one({"_id":ObjectId(noteId)})
-            if note_to_be_updated is None:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
-            if email not in note_to_be_updated["owner_id"]:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user is not authorised to update this note")
+            # Receive the JSON data from the WebSocket
             data = await websocket.receive_json()
 
-            if data['type'] == 'content':
-                await notes_collection.update_one(
-                    {"_id": ObjectId(noteId)},
-                    {"$set": {"title":data.title, "content":data.content}}
+            # Extract the token and user_id from the received data
+            token = data.get('token')
+            user_id = data.get('user_id')
+
+            if not token or not user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, 
+                    detail="Token or user_id missing from the message"
                 )
-                await manager.broadcast(noteId, data)
+
+            # Verify the JWT token and get the user's email
+            email = verify_jwt(token)
+
+            # Find the note in the database
+            note_to_be_updated = await notes_collection.find_one({"_id": ObjectId(note_id)})
+            if note_to_be_updated is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, 
+                    detail="Note not found"
+                )
+
+            # Check if the user is authorized to edit the note
+            if email not in note_to_be_updated["owner_id"]:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, 
+                    detail="This user is not authorized to update this note"
+                )
+
+            # Handle the incoming data based on its type (content or cursor)
+            if data['type'] == 'content':
+                # Update the note's content in the database
+                await notes_collection.update_one(
+                    {"_id": ObjectId(note_id)},
+                    {"$set": {"title": data['title'], "content": data['content']}}
+                )
+                # Broadcast the updated content to other users
+                await manager.broadcast(note_id, data)
             elif data['type'] == 'cursor':
                 cursor_data = {
                     "type": "cursor",
                     "user_id": data["user_id"],
                     "cursor_position": data["cursor_position"]
                 }
-                await manager.broadcast(noteId, cursor_data)
+                # Broadcast the cursor position to other users
+                await manager.broadcast(note_id, cursor_data)
 
     except WebSocketDisconnect:
-        manager.disconnect(noteId, websocket)
+        # Handle WebSocket disconnection
+        manager.disconnect(note_id, websocket)
+
 
 @app.put("/update-note/{noteId}", response_model=NoteResponse)
 async def update_note(note:NoteCreate, noteId:str,token:str=Header(..., description="JWT Token for authorization")):
